@@ -52,10 +52,12 @@ locally via `chrome.storage.sync`. Nothing else is collected or stored.
 
 ## File Structure
 
-​manifest.json   # Extension config, permissions, host rules
-background.js   # Service worker — core tab merge logic
-popup.html      # Extension popup UI
-popup.js        # Popup logic — loads and saves toggle preference
+| File | What it does |
+|---|---|
+​| `manifest.json` | Extension config, permissions, host rules |
+| `background.js` | # Service worker — core tab merge logic |
+| `popup.html` | # Extension popup UI |
+| `popup.js` | # Popup logic — loads and saves toggle preference |
 
 ---
 
