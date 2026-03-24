@@ -51,3 +51,84 @@ locally via `chrome.storage.sync`. Nothing else is collected or stored.
 ---
 
 ## File Structure
+
+extension/
+├── manifest.json   # Extension config, permissions, host rules
+├── background.js   # Service worker — core tab merge logic
+├── popup.html      # Extension popup UI
+└── popup.js        # Popup logic — loads and saves toggle preference
+
+---
+
+## Permissions
+
+| Permission | Why it's needed |
+|---|---|
+| `tabs` | Read tab URLs and open/close/update tabs |
+| `storage` | Save the external instance toggle preference |
+| `https://*.zendesk.com/agent/tickets/*` | Interact only with Zendesk agent ticket pages |
+
+---
+
+## Usage
+
+Once installed the extension works automatically in the background with no
+setup required.
+
+**To configure external instance merging:**
+
+1. Click the extension icon in the Chrome toolbar
+2. Check or uncheck **"Merge tabs for external Zendesk instances"**
+3. The setting is saved instantly
+
+---
+
+## Compatibility
+
+Works with any `*.zendesk.com` subdomain. Z2 (`support.zendesk.com`) is
+always merged regardless of the external instance toggle.
+
+| Instance | Always merged | Respects toggle |
+|---|---|---|
+| Z2 (`support.zendesk.com`) | ✓ | — |
+| Any other `*.zendesk.com` | — | ✓ |
+
+---
+
+## Version History
+
+### v2.0
+- Extended URL matching to any `*.zendesk.com` subdomain (was
+  `support.zendesk.com` only)
+- Each subdomain now merges into its own dedicated tab
+- Added `chrome.storage` setting to toggle external instance merging on/off
+- Added popup UI to control the toggle
+- Improved error cleanup: in-flight guard is now released on error as well
+  as on success
+
+### v1.1
+- Added in-flight guard (`inFlightTabReuses`) to prevent re-entrant tab
+  update loops
+- Tab query scoped to current window only
+- Pinned and discarded tabs excluded from candidates
+- Prioritised reusing a tab with the exact same URL before falling back
+
+### v1.0
+- Initial release
+- Single-tab merging for `support.zendesk.com`
+
+---
+
+## Contributing
+
+1. Fork the repo
+2. Create a feature branch: `git checkout -b my-feature`
+3. Commit your changes: `git commit -m 'Add my feature'`
+4. Push the branch: `git push origin my-feature`
+5. Open a Pull Request
+
+---
+
+## License
+
+Internal use only. Not licensed for public distribution.
