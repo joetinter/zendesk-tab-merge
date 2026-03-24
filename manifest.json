@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Zendesk Tab Merge",
+  "version": "2.0",
+  "description": "Merges Zendesk ticket tabs into one per instance, across any subdomain.",
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Zendesk Tab Merge Settings"
+  },
+  "host_permissions": [
+    "https://*.zendesk.com/agent/tickets/*"
+  ]
+}
