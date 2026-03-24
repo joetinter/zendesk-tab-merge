@@ -54,10 +54,10 @@ locally via `chrome.storage.sync`. Nothing else is collected or stored.
 
 | File | What it does |
 |---|---|
-​| `manifest.json` | Extension config, permissions, host rules |
 | `background.js` | Service worker — core tab merge logic |
 | `popup.html` | Extension popup UI |
-| `popup.js` | Popup logic — loads and saves toggle preference |
+| `popup.js` | Popup logic — loads and saves toggle preference |​
+`manifest.json` | Extension config, permissions, host rules |
 
 ---
 
