@@ -98,6 +98,13 @@ always merged regardless of the external instance toggle.
 
 ## Version History
 
+### v2.2
+- Fixed: URLs with additional path segments after the ticket ID
+  (e.g. `/events`) were not being matched and fell through without
+  triggering tab merge logic
+- Updated `TICKET_REGEX` to make trailing path segments optional —
+  applies to Z2 and all external instances
+
 ### v2.1
 - Fixed: external ticket links now correctly route into a tab sitting on
   a View (`/agent/filters/*`) or any other agent page, not just ticket pages
