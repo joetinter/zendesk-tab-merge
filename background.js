@@ -1,34 +1,27 @@
-// Zendesk Tab Merge — background.js  v2.1
+// Zendesk Tab Merge — background.js  v2.2
 //
 // Merges Zendesk ticket tabs into one tab per instance.
 // The primary instance (support.zendesk.com) is always merged.
 // External instances (any other *.zendesk.com subdomain) are merged
 // only when the "Merge tabs for external Zendesk instances" toggle is on.
 //
-// Changelog v2.0 → v2.1:
-//   - Fixed: external ticket links now correctly route into a tab sitting on
-//     a View (/agent/filters/*) or any other agent page, not just ticket pages.
-//     Previously only tabs already on /agent/tickets/* were considered as
-//     reuse candidates, causing a new tab to open if the Zendesk tab was on
-//     a View. Broadened the tab query from /agent/tickets/* to /agent/* to
-//     catch all Zendesk agent tab states.
-//
-// Changelog v1.1 → v2.0:
-//   - Extended URL matching to any *.zendesk.com subdomain (was support.zendesk.com only)
-//   - Each subdomain now merges into its own dedicated tab
-//   - Added chrome.storage setting to toggle external-instance merging on/off
-//   - Added popup UI (popup.html / popup.js) to control the toggle
-//   - Improved error cleanup: in-flight guard is released on error as well as success
-//   - Removed legacy v1.0 rollback code
+// Changelog v2.1 → v2.2:
+//   - Fixed: URLs with additional path segments after the ticket ID
+//     (e.g. /events) were not being matched by TICKET_REGEX due to a
+//     strict end-of-string anchor ($). Made the trailing path segment
+//     optional with (\/.*)?$ so /events and any future sub-paths are
+//     handled correctly. Applies to Z2 and all external instances.
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const PRIMARY_HOST = "support.zendesk.com";
 
-// Matches any https://*.zendesk.com/agent/tickets/{id} URL.
+// Matches any https://*.zendesk.com/agent/tickets/{id} URL,
+// including sub-paths like /events after the ticket ID.
 // Capture group 1 → full host   (e.g. "z3n-zenjoe.zendesk.com")
 // Capture group 2 → ticket ID   (e.g. "12345")
-const TICKET_REGEX = /^https:\/\/([\w-]+\.zendesk\.com)\/agent\/tickets\/(\d+)$/;
+// Capture group 3 → sub-path    (e.g. "/events", optional)
+const TICKET_REGEX = /^https:\/\/([\w-]+\.zendesk\.com)\/agent\/tickets\/(\d+)(\/.*)?$/;
 
 // ── In-flight guard ───────────────────────────────────────────────────────────
 const inFlightTabReuses = new Set();
@@ -46,7 +39,7 @@ async function getMergeExternalEnabled() {
 // ── Core reuse logic ──────────────────────────────────────────────────────────
 
 async function tryReuseTab(tabId, url) {
-  // 1. Only act on Zendesk ticket URLs
+  // 1. Only act on Zendesk ticket URLs (including sub-paths like /events)
   const match = url.match(TICKET_REGEX);
   if (!match) return;
 
@@ -66,12 +59,10 @@ async function tryReuseTab(tabId, url) {
   let targetId = null;
 
   try {
-    // 4. Find any Zendesk agent tab for this host in the current window.
-    //    Broadened from /agent/tickets/* to /agent/* so that tabs sitting
-    //    on Views (/agent/filters/*) or any other agent page are included.
+    // 4. Find any Zendesk agent tab for this host in the current window
     const tabs = await chrome.tabs.query({
       currentWindow: true,
-      url: `https://${host}/agent/*`,  // ← v2.1 fix
+      url: `https://${host}/agent/*`,
     });
 
     // 5. Exclude the newly-opened tab, pinned tabs, and discarded tabs
@@ -109,7 +100,6 @@ async function tryReuseTab(tabId, url) {
 
   } catch (err) {
     console.error("[Zendesk Tab Merge] Error in tryReuseTab:", err);
-    // Always clean up the guard to avoid a permanently blocked tab
     if (targetId !== null) inFlightTabReuses.delete(targetId);
   }
 }
