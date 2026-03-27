@@ -1,9 +1,17 @@
-// Zendesk Tab Merge — background.js  v2.0
+// Zendesk Tab Merge — background.js  v2.1
 //
 // Merges Zendesk ticket tabs into one tab per instance.
 // The primary instance (support.zendesk.com) is always merged.
 // External instances (any other *.zendesk.com subdomain) are merged
 // only when the "Merge tabs for external Zendesk instances" toggle is on.
+//
+// Changelog v2.0 → v2.1:
+//   - Fixed: external ticket links now correctly route into a tab sitting on
+//     a View (/agent/filters/*) or any other agent page, not just ticket pages.
+//     Previously only tabs already on /agent/tickets/* were considered as
+//     reuse candidates, causing a new tab to open if the Zendesk tab was on
+//     a View. Broadened the tab query from /agent/tickets/* to /agent/* to
+//     catch all Zendesk agent tab states.
 //
 // Changelog v1.1 → v2.0:
 //   - Extended URL matching to any *.zendesk.com subdomain (was support.zendesk.com only)
@@ -15,7 +23,6 @@
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// The primary instance is always merged, regardless of the external toggle.
 const PRIMARY_HOST = "support.zendesk.com";
 
 // Matches any https://*.zendesk.com/agent/tickets/{id} URL.
@@ -24,9 +31,6 @@ const PRIMARY_HOST = "support.zendesk.com";
 const TICKET_REGEX = /^https:\/\/([\w-]+\.zendesk\.com)\/agent\/tickets\/(\d+)$/;
 
 // ── In-flight guard ───────────────────────────────────────────────────────────
-// When we update a tab's URL via chrome.tabs.update(), that fires onUpdated
-// again. Tracking the tab ID here prevents us from re-entering tryReuseTab
-// for a tab we are already processing.
 const inFlightTabReuses = new Set();
 
 // ── Settings ──────────────────────────────────────────────────────────────────
@@ -46,8 +50,8 @@ async function tryReuseTab(tabId, url) {
   const match = url.match(TICKET_REGEX);
   if (!match) return;
 
-  const host      = match[1];  // e.g. "z3n-zenjoe.zendesk.com"
-  const ticketId  = match[2];  // e.g. "12345"
+  const host      = match[1];
+  const ticketId  = match[2];
   const isPrimary = (host === PRIMARY_HOST);
 
   // 2. For external instances, check the user toggle
@@ -56,17 +60,18 @@ async function tryReuseTab(tabId, url) {
     if (!enabled) return;
   }
 
-  // 3. Skip if this tab is already mid-reuse (prevents re-entrant loop)
+  // 3. Skip if this tab is already mid-reuse
   if (inFlightTabReuses.has(tabId)) return;
 
-  // Declared outside try so the catch block can release the guard if needed
   let targetId = null;
 
   try {
-    // 4. Find all ticket tabs for this specific Zendesk host in the current window
+    // 4. Find any Zendesk agent tab for this host in the current window.
+    //    Broadened from /agent/tickets/* to /agent/* so that tabs sitting
+    //    on Views (/agent/filters/*) or any other agent page are included.
     const tabs = await chrome.tabs.query({
       currentWindow: true,
-      url: `https://${host}/agent/tickets/*`,
+      url: `https://${host}/agent/*`,  // ← v2.1 fix
     });
 
     // 5. Exclude the newly-opened tab, pinned tabs, and discarded tabs
@@ -76,7 +81,7 @@ async function tryReuseTab(tabId, url) {
       !t.discarded
     );
 
-    if (candidates.length === 0) return;  // nothing to merge into
+    if (candidates.length === 0) return;
 
     // 6. Prefer a tab already showing this exact ticket; otherwise use the first one
     const target = candidates.find(t => t.url === url) ?? candidates[0];
@@ -86,17 +91,15 @@ async function tryReuseTab(tabId, url) {
 
     // 7. Bring the target tab to the correct URL and activate it
     if (target.url === url) {
-      // Same ticket already open — just focus it
       await chrome.tabs.update(targetId, { active: true });
     } else {
-      // Different ticket — navigate and focus
       await chrome.tabs.update(targetId, { url, active: true });
     }
 
     // 8. Close the newly-opened duplicate tab
     await chrome.tabs.remove(tabId);
 
-    // 9. Release the guard after a short delay to let the tab settle
+    // 9. Release the guard after a short delay
     setTimeout(() => inFlightTabReuses.delete(targetId), 1000);
 
     console.log(
