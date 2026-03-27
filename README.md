@@ -98,6 +98,13 @@ always merged regardless of the external instance toggle.
 
 ## Version History
 
+### v2.1
+- Fixed: external ticket links now correctly route into a tab sitting on
+  a View (`/agent/filters/*`) or any other agent page, not just ticket pages
+- Broadened tab query from `/agent/tickets/*` to `/agent/*` to catch all
+  Zendesk agent tab states
+- Updated `host_permissions` in `manifest.json` to match
+
 ### v2.0
 - Extended URL matching to any `*.zendesk.com` subdomain (was
   `support.zendesk.com` only)
